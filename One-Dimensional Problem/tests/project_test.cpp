@@ -45,7 +45,7 @@ double measure_error(const dg::Mesh1D& mesh, const dg::DG_Field1D& u, Function e
         x_mid = mesh.cell_center(i);
         for(int q = 0; q<8;++q){
             xi = x_mid + jaco*error_points[q];
-            tmp+= abs(evaluate(u,i,xi) - exact(xi));
+            tmp+= std::abs(evaluate(u,i,error_points[q]) - exact(xi))*error_weights[q];
         }
         l1_error += jaco*tmp;
     }
@@ -68,6 +68,7 @@ void test_projection(){
     const auto exact = [pi](double x){return std::sin(2.0*pi*x);};
     const std::array<int,4> cell_counts = {{8,16,32,64}};
     for(int p = 0; p<=2 ; ++p){
+        std::cout << "\np = " << p << '\n';
         double previous_l1 = 0.0;
         for(int cell : cell_counts){
             const double error = project_and_measure(p,cell,0.0,1.0,exact);
@@ -82,6 +83,8 @@ void test_projection(){
             } else {
                 std::cout << std::setw(10) << "--";
             }
+            std::cout<<'\n';
+            previous_l1 = error;
         }
     }
 }

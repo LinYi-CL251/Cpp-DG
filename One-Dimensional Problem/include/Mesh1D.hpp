@@ -6,7 +6,8 @@ namespace dg{
 
     class Mesh1D {
         private:
-        double xmax_, xmin_; // Computational Domain [xmin_, xmax_];
+        double xmin_; // Computational Domain [xmin_, xmax_];
+        double xmax_;
         double dx_; // The Mesh size
         int ncells_;
         public:
