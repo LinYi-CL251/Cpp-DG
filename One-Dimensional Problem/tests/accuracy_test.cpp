@@ -119,7 +119,52 @@ void run_convergence(const std::string& name, Equation eq, Exact exact,
         }
      }
 }
-
+template <class Equation, class Exact>
+void run_convergence(const std::string& name, Equation eq, Exact exact,
+     double T, const std::vector<int>& cells_list, const std::vector<int>& degrees,
+     double x_min, double x_max, double cfl,int nvar,double const_v){
+        for (int p : degrees) {
+        std::cout << "\n=== " << name << ", p = " << p << " ===\n";
+        std::cout << std::setw(8) << "N"
+                    << std::setw(20) << "L1(rho)" << std::setw(10) << "order"
+                    << std::setw(20) << "L1(rho*u)" << std::setw(10) << "order"
+                    << std::setw(20) << "L1(E)" << std::setw(10) << "order" << '\n';
+        std::vector<double> prev(nvar, 0.0);
+        for (int N : cells_list) {
+            dg::Mesh1D mesh(x_min, x_max, N);
+            auto init = [&](double x, int var) { return exact(x, 0.0, var); };
+            dg::DG_Mesh1D<decltype(init)> space(mesh, p, 6, nvar);
+            dg::DG_Field1D u(N, nvar, p + 1);
+            space.L2projection(init, u);
+            dg::DGOperator1D<dg::Euler1D, decltype(space)> op(mesh, eq, space,
+                                                                dg::BoundaryType1D::Periodic);
+            dg::SSPRK3 rk(u);
+            double t = 0.0;
+            while (t < T) {
+                const double smax = op.max_speed(u);
+                double dt = cfl * mesh.dx() / std::max(smax, 1e-12);
+                if (t + dt > T) dt = T - t;
+                rk.step(u, t, dt, op);
+                t += dt;
+            }
+            auto exactT = [&](double x, int var) { return exact(x, T, var); };
+            std::vector<double> l1(nvar, 0.0), ord(nvar, 0.0);
+            for (int v = 0; v < nvar; ++v) {
+                l1[v] = measure_L1(mesh, u, exactT, v);
+                ord[v] = (prev[v] > 0.0 && l1[v] > 0.0)
+                                ? std::log2(prev[v] / l1[v])
+                                : std::numeric_limits<double>::quiet_NaN();
+            }
+            std::cout << std::setw(8) << N << std::scientific << std::setprecision(6);
+            for (int v = 0; v < nvar; ++v) {
+                std::cout << std::setw(20) << l1[v] << std::fixed << std::setprecision(3)
+                            << std::setw(10) << ord[v] << std::scientific << std::setprecision(6);
+            }
+            std::cout << '\n';
+            prev = l1;
+        }
+    }
+}
 int main(){
     const std::vector<int> cells = {10, 20, 40 ,80, 160};
     const std::vector<int> degrees = {0,1,2};
@@ -139,5 +184,15 @@ int main(){
         return std::sin(2.0 * PI * x0);
     };
     run_convergence("Burgers, T=0.1", dg::Burgers(), exact_burg, 0.1, cells, degrees,0.0,1.0,0.16);
+
+    // Exact conserved variables of the density wave.
+    auto exact_euler = [](double x, double t, int var) {
+        const double rho = 1.0 + 0.2 * std::sin(2.0 * PI * (x - t));
+        const double GAMMA = 1.4;
+        if (var == 0) return rho;                 // rho
+        if (var == 1) return rho * 1.0;           // rho*u, u = 1
+        return 1.0 / (GAMMA - 1.0) + 0.5 * rho;    // E = p/(gamma-1) + rho*u^2/2
+    };
+    run_convergence("Euler1D density wave (gamma=1.4), T=0.5", dg::Euler1D(1.4),exact_euler, 0.5, cells, degrees,0.0,1.0,0.16,3,1.4);
     return 0;
 }
