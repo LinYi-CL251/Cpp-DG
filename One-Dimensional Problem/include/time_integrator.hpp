@@ -38,7 +38,7 @@ class SSPRK3 {
         if(!std::isfinite(t) || !std::isfinite(dt) || dt <= 0.0){
             throw std::invalid_argument("SSPRK3 requires finite time and positive dt");
         }
-        if(u.ncells() != old_.ncells() || u.nvar() != old.nvar() 
+        if(u.ncells() != old_.ncells() || u.nvar() != old_.nvar() 
             || u.ndof() != old_.ndof()){
                 throw std::invalid_argument("SSPRK3 field dimensions changed");
         }

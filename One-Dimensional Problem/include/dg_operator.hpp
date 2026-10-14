@@ -3,6 +3,7 @@
 #include "Mesh1D.hpp"
 #include "dg_mesh1D.hpp"
 #include "dg_field.hpp"
+#include "numerical_flux.hpp"
 #include <algorithm>
 #include <cmath>
 #include <stdexcept>
