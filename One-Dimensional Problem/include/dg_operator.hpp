@@ -271,14 +271,11 @@ namespace dg{
         }
 
         // Reconstruct the full coupled state before estimating eigenvalue bounds.
-        double max_speed(const DGField& u) const {
+        double max_speed(const DG_Field1D& u) const {
             double speed = 0.0;
-            for (int cell = 0; cell < mesh_.ncell(); ++cell) {
-                speed = std::max(speed, trace_state(u, cell, false));
-                speed = std::max(speed, trace_state(u, cell, true));
-                for (int q = 0; q < space_.nq(); ++q) {
-                    speed = std::max(speed, quadrature_state(u, cell, q));
-                }
+            for (int cell = 0; cell < mesh_.ncells(); ++cell) {
+                speed = std::max(speed, check_speed(trace_state(u, cell, false)));
+                speed = std::max(speed, check_speed(trace_state(u, cell, true)));
             }
             return speed;
         }
