@@ -134,8 +134,44 @@ namespace dg{
             if(&u == &results) {
                 throw std::invalid_argument("rhs input and output must be distince fields");
             }
+            // Assemble the fluxes
             assemble_flux(u,t,flux_);
+            // Assemble the volume
             assemble_volume_flux(u,f_);
+
+            // Assemble the source term
+            if constexpr(HasSource<Equation>::value){
+                assemble_source(u,t,source_);
+            }
+
+            //Compute the RHS
+            for(int cell = 0; cell < mesh_.ncells(); ++cell){
+                for(int var = 0; var < equation_.nvar(); ++var){
+                    for(int k = 0; k < space_.ndof(); ++k){
+                        double volume = 0.0;
+                        for (int q = 0; q< space_.nq(); ++q){
+                            volume += space_.weight(q) *f_[volume_index(cell, q,var)]
+                                    * space_.dphi(q,k);
+                        }
+                        //The derivative and integration Jacobians cancel in the
+                        // volume term. The remaining 2/h is from mass inversion.
+                        const double residual = volume + 
+                            + flux_[face_index(cell,var)] * space_.phi_left(k)
+                            - flux_[face_index(cell + 1, var)] * space_.phi_right(k);
+                        results(cell, var, k) = (2.0 / mesh_.dx())
+                                * space_.inv_ref_mass(k) * residual;
+                        if constexpr(HasSource<Equation>::value){
+                            double source_integral = 0.0;
+                            for (int q = 0; q<space_.nq(); ++q){
+                                source_integral += space_.weight(q) * source_[volume_index(cell,q,var)] * space_.phi(q,k);
+                            }
+                            // Physical integration Jacobian h/2 cancels mass
+                            // inverse 2/h; no extra mesh factor belongs here.
+                            results(cell, var, k) += space_.inv_ref_mass(k) * source_integral;
+                        }
+                    }
+                }
+            }
         }
 
         void assemble_flux(const DG_Field1D& u, double /*t*/, std::vector<double>& FLUX){
@@ -214,6 +250,20 @@ namespace dg{
                             throw std::runtime_error("Non-finite volume flux");
                         }
                         F[volume_index(cell,q,var)] = physical_flux[var];
+                    }
+                }
+            }
+        }
+
+        void assemble_source(const DG_Field1D& u, double t, std::vector<double>& S){
+            S.resize(source_.size());
+            for(int cell =0; cell < mesh_.ncells(); ++cell){
+                for(int q = 0; q < space_.nq(); ++q){
+                    const double x = mesh_.cell_center(cell) + 0.5*mesh_.dx() * space_.point(q);
+                    const State value = equation_.source(x,t,quadrature_state(u,cell,q));
+                    for (int var = 0; var < equation_.nvar(); ++var){
+                        if(!std::isfinite(value[var])) throw std::runtime_error("Non-finite source term");
+                        S[volume_index(cell,q,var)] = value[var];
                     }
                 }
             }
