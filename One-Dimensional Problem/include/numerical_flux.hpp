@@ -23,7 +23,7 @@ namespace dg{
             const auto fR = eq.flux(uR);
             typename Equation::State result{};
             for(std::size_t var = 0; var < result.size() ; ++ var){
-                result[var] = 0.5*(fL[var] + fR[var] - 0.5*alpha*(uR[var] - uL[var]));
+                result[var] = 0.5*(fL[var] + fR[var] - alpha*(uR[var] - uL[var]));
                 if(!std::isfinite(result[var])){
                     throw std::runtime_error("Invalid numerical-flux value");
                 }

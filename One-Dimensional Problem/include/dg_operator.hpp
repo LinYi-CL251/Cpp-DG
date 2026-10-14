@@ -15,7 +15,7 @@ namespace dg{
     template<class Equation, class = void>
     struct HasSource : std::false_type {};
     template<class Equation>
-    struct HasSource<Equation, std::void_t<decltype(std::declval<const Equation&()>.source(
+    struct HasSource<Equation, std::void_t<decltype(std::declval<const Equation&>().source(
         double{},double{},std::declval<const typename Equation::State&>()))>>: std::true_type {};
     
     enum class BoundaryType1D {Periodic, Outflow, Reflective};
@@ -80,10 +80,10 @@ namespace dg{
                 if(!std::isfinite(value)){
                     throw std::runtime_error("Non-finite reconstructed DG state");
                 }
-                const double speed = equation_.max_speed(state);
-                if(!std::isfinite(speed) || speed < 0.0){
-                    throw std::runtime_error("Invalid characteristic wave speed");
-                }
+            }
+            const double speed = equation_.max_speed(state);
+            if(!std::isfinite(speed) || speed < 0.0){
+                throw std::runtime_error("Invalid characteristic wave speed");
             }
             return speed;
         }
@@ -198,10 +198,10 @@ namespace dg{
             const State last_right = trace_state(u,ncell - 1, true); //The last cell, right boundary
             State exterior_left{};
             State exterior_right{};
-            if(boundary == BoundaryType1D::Periodic){ // Periodic Boundary conditions
+            if(boundary_ == BoundaryType1D::Periodic){ // Periodic Boundary conditions
                 exterior_left = last_right;
                 exterior_right = first_left;
-            }else if(boundary == BoundaryType1D::Outflow){ // Outflow Boundary conditions
+            }else if(boundary_ == BoundaryType1D::Outflow){ // Outflow Boundary conditions
                 exterior_left = first_left;
                 exterior_right = last_right;
             }else{                                         // Reflective Boundary conditions
@@ -242,7 +242,7 @@ namespace dg{
 
         void assemble_volume_flux(const DG_Field1D& u, std::vector<double>& F){
             F.resize(f_.size());
-            for (int cell = 0; cell < mesh_.nells(); ++cell){
+            for (int cell = 0; cell < mesh_.ncells(); ++cell){
                 for(int q = 0; q < space_.nq() ; ++q){
                     const State physical_flux = equation_.flux(quadrature_state(u,cell,q));
                     for(int var = 0; var < equation_.nvar(); ++var){
