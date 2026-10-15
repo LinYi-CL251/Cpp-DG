@@ -114,8 +114,8 @@ namespace dg{
                  Transform transform, MeanNeighbors neighbors = {})
         : mesh_(mesh), nvar_(equation.nvar()), M_(M), threshold_(M*mesh.dx()*mesh.dx()),
           transform_(std::move(transform)), neighbors_(std::move(neighbors)),
-          means_(mesh.ncell()) {
-            if (!std::isfinite(M_) || M_ < 0.0 || mesh.ncell() <= 0
+          means_(mesh.ncells()) {
+            if (!std::isfinite(M_) || M_ < 0.0 || mesh.ncells() <= 0
                 || !std::isfinite(mesh.dx()) || mesh.dx() <= 0.0
                 || !std::isfinite(threshold_) || nvar_ != static_cast<int>(State{}.size())) {
                 throw std::invalid_argument("Invalid TVB limiter mesh, M or equation dimensions");
